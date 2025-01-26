@@ -22,7 +22,7 @@ from horde_sdk.ai_horde_api.consts import (
     KNOWN_UPSCALERS,
 )
 from horde_sdk.ai_horde_api.endpoints import AI_HORDE_API_ENDPOINT_SUBPATH
-from horde_sdk.ai_horde_api.fields import JobID
+from horde_sdk.ai_horde_api.fields import GenerationID
 from horde_sdk.consts import HTTPMethod
 from horde_sdk.generic_api.apimodels import (
     APIKeyAllowedInRequestMixin,
@@ -209,9 +209,9 @@ class ImageGenerateJobPopResponse(
     v2 API Model: `GenerationPayloadStable`
     """
 
-    id_: JobID | None = Field(default=None, alias="id")
+    id_: GenerationID | None = Field(default=None, alias="id")
     """(Obsolete) The UUID for this image generation."""
-    ids: list[JobID]
+    ids: list[GenerationID]
     """A list of UUIDs for image generation."""
 
     payload: ImageGenerateJobPopPayload
@@ -252,10 +252,10 @@ class ImageGenerateJobPopResponse(
         return v
 
     @field_validator("id_", mode="before")
-    def validate_id(cls, v: str | JobID) -> JobID | str:
+    def validate_id(cls, v: str | GenerationID) -> GenerationID | str:
         if isinstance(v, str) and v == "":
             logger.warning("Job ID is empty")
-            return JobID(root=uuid.uuid4())
+            return GenerationID(root=uuid.uuid4())
 
         return v
 
@@ -265,14 +265,6 @@ class ImageGenerateJobPopResponse(
     def ids_present(self) -> bool:
         """Whether or not the IDs are present."""
         return self._ids_present
-
-    def _sort_ids(self) -> None:
-        """Sort the IDs in place and sort so r2_uploads is changed so the same index changes occur."""
-        if len(self.ids) > 1:
-            logger.debug("Sorting IDs")
-            self.ids.sort()
-            if self.r2_uploads is not None:
-                self.r2_uploads.sort()
 
     @model_validator(mode="after")
     def validate_ids_present(self) -> ImageGenerateJobPopResponse:
@@ -286,8 +278,6 @@ class ImageGenerateJobPopResponse(
 
         if self.id_ is None and len(self.ids) == 0:
             raise ValueError("Neither id_ nor ids were present in the response.")
-
-        self._sort_ids()
 
         self._ids_present = True
 
