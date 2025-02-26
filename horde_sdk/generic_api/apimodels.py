@@ -5,12 +5,13 @@ from __future__ import annotations
 import abc
 import base64
 import os
+import time
 import uuid
 from typing import Any, TypeVar
 
 import aiohttp
 from loguru import logger
-from pydantic import BaseModel, ConfigDict, Field, RootModel, field_validator
+from pydantic import BaseModel, ConfigDict, Field, PrivateAttr, RootModel, field_validator
 from typing_extensions import override
 
 from horde_sdk import _default_sslcontext
@@ -129,6 +130,13 @@ class HordeAPIMessage(HordeAPIObject):
 class HordeResponse(HordeAPIMessage):
     """Represents any response from any Horde API."""
 
+    _time_constructed: float = PrivateAttr(default_factory=lambda: time.time())
+
+    @property
+    def time_constructed(self) -> float:
+        """The time the model was constructed (in epoch time)."""
+        return self._time_constructed
+
 
 T = TypeVar("T")
 
@@ -186,11 +194,11 @@ class ResponseRequiringFollowUpMixin(abc.ABC):
     """Represents any response from any Horde API which requires a follow up request of some kind."""
 
     @abc.abstractmethod
-    def get_follow_up_returned_params(self, *, as_python_field_name: bool = False) -> list[dict[str, object]]:
+    def get_follow_up_returned_params(self, *, as_python_field_name: bool = False) -> list[dict[str, Any]]:
         """Return the information required from this response to submit a follow up request.
 
         Note that this dict uses the alias field names (as seen on the API), not the python field names.
-        JobIDs will be returned as `{"id": "00000000-0000-0000-0000-000000000000"}` instead of
+        GenerationIDs will be returned as `{"id": "00000000-0000-0000-0000-000000000000"}` instead of
         `{"id_": "00000000-0000-0000-0000-000000000000"}`.
 
         Returns:
@@ -531,7 +539,7 @@ class APIKeyAllowedInRequestMixin(HordeAPIObjectBaseModel):
         return v
 
 
-class RequestSpecifiesUserIDMixin(HordeAPIData):
+class MessageSpecifiesUserIDMixin(HordeAPIData):
     """Mix-in class to describe an endpoint for which you can specify a user."""
 
     user_id: str
@@ -580,7 +588,7 @@ __all__ = [
     "HordeAPIObject",
     "HordeAPIMessage",
     "RequestErrorResponse",
-    "RequestSpecifiesUserIDMixin",
+    "MessageSpecifiesUserIDMixin",
     "RequestUsesWorkerMixin",
     "ResponseRequiringFollowUpMixin",
     "ResponseWithProgressMixin",

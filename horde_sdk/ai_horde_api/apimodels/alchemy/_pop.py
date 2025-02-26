@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from loguru import logger
-from pydantic import Field, field_validator, model_validator
+from pydantic import Field, field_validator
 from typing_extensions import override
 
 from horde_sdk.ai_horde_api.apimodels.alchemy._submit import AlchemyJobSubmitRequest
@@ -9,9 +9,10 @@ from horde_sdk.ai_horde_api.apimodels.base import (
     BaseAIHordeRequest,
     JobRequestMixin,
 )
-from horde_sdk.ai_horde_api.consts import KNOWN_ALCHEMY_TYPES
 from horde_sdk.ai_horde_api.endpoints import AI_HORDE_API_ENDPOINT_SUBPATH
+from horde_sdk.ai_horde_api.fields import GenerationID
 from horde_sdk.consts import HTTPMethod
+from horde_sdk.generation_parameters.alchemy.consts import KNOWN_ALCHEMY_TYPES
 from horde_sdk.generic_api.apimodels import (
     APIKeyAllowedInRequestMixin,
     HordeAPIObjectBaseModel,
@@ -126,7 +127,7 @@ class NoValidAlchemyFound(HordeAPIObjectBaseModel):
         return hash((self.bridge_version, self.untrusted, self.worker_id))
 
 
-class AlchemyPopResponse(HordeResponseBaseModel, ResponseRequiringFollowUpMixin):
+class AlchemyJobPopResponse(HordeResponseBaseModel, ResponseRequiringFollowUpMixin):
     """v2 API Model: `InterrogationPopPayload`."""
 
     # and not actually specifying a schema
@@ -167,14 +168,6 @@ class AlchemyPopResponse(HordeResponseBaseModel, ResponseRequiringFollowUpMixin)
 
         return all_ids
 
-    @model_validator(mode="after")
-    def coerce_list_order(self) -> AlchemyPopResponse:
-        if self.forms is not None:
-            logger.debug("Sorting forms by id")
-            self.forms.sort(key=lambda form: form.id_)
-
-        return self
-
     @override
     @classmethod
     def get_follow_up_request_types(cls) -> list[type[AlchemyJobSubmitRequest]]:  # type: ignore[override]
@@ -182,7 +175,7 @@ class AlchemyPopResponse(HordeResponseBaseModel, ResponseRequiringFollowUpMixin)
         return [AlchemyJobSubmitRequest]
 
     def __eq__(self, other: object) -> bool:
-        if not isinstance(other, AlchemyPopResponse):
+        if not isinstance(other, AlchemyJobPopResponse):
             return False
 
         forms_match = True
@@ -201,6 +194,18 @@ class AlchemyPopResponse(HordeResponseBaseModel, ResponseRequiringFollowUpMixin)
             return hash(self.skipped)
 
         return hash((tuple([form.id_ for form in self.forms]), self.skipped))
+
+    @property
+    def ids(self) -> list[GenerationID]:
+        """Return a list of all the ids in the response."""
+        if self.forms is None:
+            return []
+        return [form.id_ for form in self.forms]
+
+    @property
+    def ids_present(self) -> bool:
+        """Return whether the response has any ids."""
+        return bool(self.ids)
 
 
 class AlchemyPopRequest(BaseAIHordeRequest, APIKeyAllowedInRequestMixin):
@@ -233,5 +238,5 @@ class AlchemyPopRequest(BaseAIHordeRequest, APIKeyAllowedInRequestMixin):
 
     @override
     @classmethod
-    def get_default_success_response_type(cls) -> type[AlchemyPopResponse]:
-        return AlchemyPopResponse
+    def get_default_success_response_type(cls) -> type[AlchemyJobPopResponse]:
+        return AlchemyJobPopResponse

@@ -17,13 +17,12 @@ from horde_sdk.ai_horde_api.apimodels.base import (
 from horde_sdk.ai_horde_api.apimodels.generate._submit import ImageGenerationJobSubmitRequest
 from horde_sdk.ai_horde_api.consts import (
     GENERATION_STATE,
-    KNOWN_FACEFIXERS,
-    KNOWN_SOURCE_PROCESSING,
-    KNOWN_UPSCALERS,
 )
 from horde_sdk.ai_horde_api.endpoints import AI_HORDE_API_ENDPOINT_SUBPATH
-from horde_sdk.ai_horde_api.fields import JobID
+from horde_sdk.ai_horde_api.fields import GenerationID
 from horde_sdk.consts import HTTPMethod
+from horde_sdk.generation_parameters.alchemy.consts import KNOWN_FACEFIXERS, KNOWN_UPSCALERS
+from horde_sdk.generation_parameters.image.consts import KNOWN_SOURCE_PROCESSING
 from horde_sdk.generic_api.apimodels import (
     APIKeyAllowedInRequestMixin,
     HordeAPIObjectBaseModel,
@@ -137,8 +136,16 @@ class ExtraSourceImageMixin(ResponseRequiringDownloadMixin):
             return self._downloaded_extra_source_images
 
         self._downloaded_extra_source_images = []
+
+        download_tasks = []
         for extra_source_image in self.extra_source_images:
-            await self._download_image_if_needed(client_session, extra_source_image, max_retries)
+            download_tasks.append(
+                asyncio.create_task(
+                    self._download_image_if_needed(client_session, extra_source_image, max_retries),
+                ),
+            )
+
+        await asyncio.gather(*download_tasks)
 
         self._sort_downloaded_images()
         return self._downloaded_extra_source_images.copy()
@@ -209,14 +216,14 @@ class ImageGenerateJobPopResponse(
     v2 API Model: `GenerationPayloadStable`
     """
 
-    id_: JobID | None = Field(default=None, alias="id")
+    id_: GenerationID | None = Field(default=None, alias="id")
     """(Obsolete) The UUID for this image generation."""
-    ids: list[JobID]
+    ids: list[GenerationID]
     """A list of UUIDs for image generation."""
 
     payload: ImageGenerateJobPopPayload
     """The parameters used to generate this image."""
-    skipped: ImageGenerateJobPopSkippedStatus
+    skipped: ImageGenerateJobPopSkippedStatus = Field(default_factory=ImageGenerateJobPopSkippedStatus)
     """The reasons this worker was not issued certain jobs, and the number of jobs for each reason."""
     model: str | None = None
     """Which of the available models to use for this request."""
@@ -252,10 +259,10 @@ class ImageGenerateJobPopResponse(
         return v
 
     @field_validator("id_", mode="before")
-    def validate_id(cls, v: str | JobID) -> JobID | str:
+    def validate_id(cls, v: str | GenerationID) -> GenerationID | str:
         if isinstance(v, str) and v == "":
             logger.warning("Job ID is empty")
-            return JobID(root=uuid.uuid4())
+            return GenerationID(root=uuid.uuid4())
 
         return v
 
@@ -265,14 +272,6 @@ class ImageGenerateJobPopResponse(
     def ids_present(self) -> bool:
         """Whether or not the IDs are present."""
         return self._ids_present
-
-    def _sort_ids(self) -> None:
-        """Sort the IDs in place and sort so r2_uploads is changed so the same index changes occur."""
-        if len(self.ids) > 1:
-            logger.debug("Sorting IDs")
-            self.ids.sort()
-            if self.r2_uploads is not None:
-                self.r2_uploads.sort()
 
     @model_validator(mode="after")
     def validate_ids_present(self) -> ImageGenerateJobPopResponse:
@@ -286,8 +285,6 @@ class ImageGenerateJobPopResponse(
 
         if self.id_ is None and len(self.ids) == 0:
             raise ValueError("Neither id_ nor ids were present in the response.")
-
-        self._sort_ids()
 
         self._ids_present = True
 

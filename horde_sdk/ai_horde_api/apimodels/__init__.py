@@ -1,5 +1,7 @@
 """All requests, responses and API models defined for the AI Horde API."""
 
+from typing import TypeVar
+
 from horde_sdk.ai_horde_api.apimodels._documents import (
     AIHordeDocumentRequestMixin,
     AIHordeGetPrivacyPolicyRequest,
@@ -14,6 +16,15 @@ from horde_sdk.ai_horde_api.apimodels._find_user import (
 from horde_sdk.ai_horde_api.apimodels._kudos import (
     KudosTransferRequest,
     KudosTransferResponse,
+)
+from horde_sdk.ai_horde_api.apimodels._sharedkeys import (
+    SharedKeyCreateRequest,
+    SharedKeyDeleteRequest,
+    SharedKeyDeleteResponse,
+    SharedKeyDetailsRequest,
+    SharedKeyDetailsResponse,
+    SharedKeyModifyRequest,
+    SharedKeySettings,
 )
 from horde_sdk.ai_horde_api.apimodels._stats import (
     ImageStatsModelsRequest,
@@ -71,9 +82,9 @@ from horde_sdk.ai_horde_api.apimodels.alchemy._async import (
 )
 from horde_sdk.ai_horde_api.apimodels.alchemy._pop import (
     AlchemyFormPayloadStable,
+    AlchemyJobPopResponse,
     AlchemyPopFormPayload,
     AlchemyPopRequest,
-    AlchemyPopResponse,
     NoValidAlchemyFound,
 )
 from horde_sdk.ai_horde_api.apimodels.alchemy._status import (
@@ -98,6 +109,7 @@ from horde_sdk.ai_horde_api.apimodels.base import (
     JobResponseMixin,
     JobSubmitResponse,
     LorasPayloadEntry,
+    MessageSpecifiesSharedKeyMixin,
     SingleWarningEntry,
     TIPayloadEntry,
     WorkerRequestMixin,
@@ -115,6 +127,7 @@ from horde_sdk.ai_horde_api.apimodels.generate._pop import (
     ImageGenerateJobPopRequest,
     ImageGenerateJobPopResponse,
     ImageGenerateJobPopSkippedStatus,
+    NoValidRequestFound,
     PopInput,
 )
 from horde_sdk.ai_horde_api.apimodels.generate._progress import (
@@ -167,15 +180,20 @@ from horde_sdk.ai_horde_api.apimodels.workers._workers import (
     WorkerDetailItem,
     WorkerKudosDetails,
 )
-from horde_sdk.ai_horde_api.consts import KNOWN_ALCHEMY_TYPES
+from horde_sdk.generation_parameters.alchemy.consts import KNOWN_ALCHEMY_TYPES
 from horde_sdk.generic_api.apimodels import (
     APIKeyAllowedInRequestMixin,
     ContainsMessageResponseMixin,
-    RequestSpecifiesUserIDMixin,
+    MessageSpecifiesUserIDMixin,
     RequestUsesWorkerMixin,
     ResponseRequiringDownloadMixin,
     ResponseRequiringFollowUpMixin,
     ResponseWithProgressMixin,
+)
+
+JobPopResponseTypeVar = TypeVar(
+    "JobPopResponseTypeVar",
+    bound=ImageGenerateJobPopResponse | TextGenerateJobPopResponse | AlchemyJobPopResponse,
 )
 
 __all__ = [
@@ -190,6 +208,13 @@ __all__ = [
     "FindUserRequest",
     "KudosTransferRequest",
     "KudosTransferResponse",
+    "SharedKeyCreateRequest",
+    "SharedKeyDeleteRequest",
+    "SharedKeyDeleteResponse",
+    "SharedKeyDetailsRequest",
+    "SharedKeyDetailsResponse",
+    "SharedKeyModifyRequest",
+    "SharedKeySettings",
     "UserDetailsResponse",
     "MonthlyKudos",
     "UsageDetails",
@@ -238,7 +263,7 @@ __all__ = [
     "AlchemyFormPayloadStable",
     "AlchemyPopFormPayload",
     "AlchemyPopRequest",
-    "AlchemyPopResponse",
+    "AlchemyJobPopResponse",
     "NoValidAlchemyFound",
     "AlchemyCaptionResult",
     "AlchemyDeleteRequest",
@@ -259,6 +284,7 @@ __all__ = [
     "JobRequestMixin",
     "JobResponseMixin",
     "LorasPayloadEntry",
+    "MessageSpecifiesSharedKeyMixin",
     "SingleWarningEntry",
     "TIPayloadEntry",
     "WorkerRequestMixin",
@@ -274,6 +300,7 @@ __all__ = [
     "ImageGenerateJobPopResponse",
     "ImageGenerateJobPopSkippedStatus",
     "PopInput",
+    "NoValidRequestFound",
     "ResponseGenerationProgressCombinedMixin",
     "ResponseGenerationProgressInfoMixin",
     "DeleteImageGenerateRequest",
@@ -311,9 +338,10 @@ __all__ = [
     "WorkerKudosDetails",
     "APIKeyAllowedInRequestMixin",
     "ContainsMessageResponseMixin",
-    "RequestSpecifiesUserIDMixin",
+    "MessageSpecifiesUserIDMixin",
     "RequestUsesWorkerMixin",
     "ResponseRequiringDownloadMixin",
     "ResponseRequiringFollowUpMixin",
     "ResponseWithProgressMixin",
+    "JobPopResponseTypeVar",
 ]
